@@ -68,7 +68,11 @@ if __name__ == "__main__":
         url_to_get = f"https://github.com/sovereignCloudStack/cluster-stack-provider-openstack/releases/download/{CSPO_VERSION}/cspo-infrastructure-components.yaml"
 
     # Retrieve the YAML file and store it in a local file with random file name
-    local_filename, headers = urllib.request.urlretrieve(url_to_get)
+    try:
+        local_filename, headers = urllib.request.urlretrieve(url_to_get)
+    except Exception as ex:
+        print(f"There was an exception during downloading of URL: {ex}")
+        exit(3)
 
     # A list of YAML documents that will be written to the resulting YAML file
     docs_to_write = list()
@@ -79,14 +83,23 @@ if __name__ == "__main__":
         # We aim to fetch exactly one document that contains the ENV vars that would normally be substituted by Go envsubst
         doc_to_patch = None
 
+        matched = False
         for doc in docs:
             # Use "endswith" to match both CSO and CSPO
             if doc.get("kind") == "Secret" and doc["metadata"].get("name").endswith("-cluster-stack-variables"):
+                if matched:
+                    print(f"There was a second match on the cluster-stack-variables secret section!")
+                    exit(4)
                 # On match, store it separately
                 doc_to_patch = doc
+                matched = True
             else:
                 # No match, just pass through
                 docs_to_write.append(doc)
+
+        if not matched or doc_to_patch is None:
+            print(f"There was no match on doc_to_patch")
+            exit(5)
 
         # Now do the patching
         doc_to_patch["data"] = {
