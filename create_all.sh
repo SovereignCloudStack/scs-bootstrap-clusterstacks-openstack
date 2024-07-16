@@ -9,21 +9,40 @@
 set -e
 
 debug () {
-    echo
     d=$(date +%H:%M:%S)
-    echo -e "${d} | $@"
+    echo -e "🔵 ${d} | $@"
 }
 
-if [[ ! -f "clouds.yaml" ]]; then
-    debug "You must have a clouds.yaml in this directory"
+CLOUDSYAML=$1
+
+if [[ -z "$CLOUDSYAML" ]]; then
+    debug "No specific clouds.yaml was passed as argument, using default 'clouds.yaml' file name"
+    CLOUDSYAML="clouds.yaml"
 fi
+
+if [[ ! -f "$CLOUDSYAML" ]]; then
+    debug "Tried to use file '$CLOUDSYAML' as clouds.yaml, but file does not exist or is not a file"
+    exit 1
+fi
+
+if ! grep 'clouds:' "$CLOUDSYAML" >/dev/null; then
+    debug "File '$CLOUDSYAML' does not contain a 'clouds:' section. Please check your clouds.yaml file"
+    exit 1
+fi
+
+debug "Using file '$CLOUDSYAML' as the clouds.yaml source"
 
 if [[ ! -f "gh-pat" ]]; then
     debug "You must have a file named 'gh-pat' in this directory"
+    exit 1
 fi
 
-echo "Please enter your OpenStack public network interface UUID: "
-read -r OS_PUBLIC_INTERFACE_UUID
+if ! which clusterctl >/dev/null; then
+    debug "You need to have the clusterctl binary in your PATH"
+    exit 1
+fi
+
+read -r -p "🔴 Please enter your OpenStack public network interface UUID: " OS_PUBLIC_INTERFACE_UUID
 
 debug "Reading Github personal access token from file, storing as env var"
 export GH_PAT=$(cat gh-pat | tr --delete '[:space:]')
@@ -70,25 +89,33 @@ debug "Fetching and applying CSO to KinD cluster"
 # https://github.com/SovereignCloudStack/cluster-stack-operator/releases
 export CSO_VERSION=v0.1.0-alpha.6
 export CSO_FILE=$(python3 fetch-cso-cspo.py cso)
+
 debug "Got $CSO_FILE as the patched file, to be read into kubectl apply"
-kubectl apply -f "$CSO_FILE"
+until kubectl apply -f "$CSO_FILE"
+do
+    debug "Expected race condition met, trying again in three seconds.."
+    sleep 3
+done
 
 
 debug "Fetching, patching and applying CSPO to KinD cluster"
 # https://github.com/SovereignCloudStack/cluster-stack-provider-openstack/releases
 export CSPO_VERSION=v0.1.0-alpha.3
 export CSPO_FILE=$(python3 fetch-cso-cspo.py cspo)
+
 debug "Got $CSPO_FILE as the patched file, to be read into kubectl apply"
 kubectl apply -f "$CSPO_FILE"
 
 
-debug "Define namespace for tenant"
-export CS_NAMESPACE="scs-tenant"
+TENANT="scs-bootstrapped-tenant-$RANDOM"
+debug "Define namespace name for tenant as $TENANT"
+export CS_NAMESPACE=$TENANT
+
 
 
 CSP_HELPER_URL="https://github.com/SovereignCloudStack/openstack-csp-helper/releases/download/v0.6.0/openstack-csp-helper.tgz"
 debug "Init CSP helper"
-until helm upgrade -i "csp-helper-$CS_NAMESPACE" -n "$CS_NAMESPACE" --create-namespace $CSP_HELPER_URL -f clouds.yaml
+until helm upgrade -i "csp-helper-$CS_NAMESPACE" -n "$CS_NAMESPACE" --create-namespace $CSP_HELPER_URL -f "$CLOUDSYAML"
 do
     debug "Trying again in three seconds.."
     sleep 3
@@ -140,7 +167,12 @@ spec:
 EOF
 
 debug "Run kubectl for clusterstack definition"
-kubectl apply -f clusterstack.generated.yaml
+until kubectl apply -f clusterstack.generated.yaml
+do
+    debug "Expected race condition met, trying again in three seconds.."
+    sleep 3
+done
+
 
 # Name of the ClusterClass resource
 export CS_CLASS_NAME=openstack-"${CS_NAME}"-"${CS_K8S_VERSION/./-}"-"${CS_VERSION}"
@@ -208,5 +240,7 @@ do
     sleep 3
 done
 
+echo
+debug "All done. Your SCS tenant namespace is '$TENANT'"
 debug "You can now fetch the kubeconfig with \"clusterctl -n ${CS_NAMESPACE} get kubeconfig ${CS_CLUSTER_NAME} > kubeconfig_workload_cluster\""
 debug "View the cluster: clusterctl -n ${CS_NAMESPACE} describe cluster ${CS_CLUSTER_NAME} --grouping=false --show-resourcesets --show-machinesets"
