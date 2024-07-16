@@ -100,14 +100,16 @@ done
 
 debug "Fetching, patching and applying CSPO to KinD cluster"
 # https://github.com/SovereignCloudStack/cluster-stack-provider-openstack/releases
-export CSPO_VERSION=v0.1.0-alpha.3
+export CSPO_VERSION=v0.1.0-alpha.4
 export CSPO_FILE=$(python3 fetch-cso-cspo.py cspo)
 
 debug "Got $CSPO_FILE as the patched file, to be read into kubectl apply"
 kubectl apply -f "$CSPO_FILE"
 
 
-TENANT="scs-bootstrapped-tenant-$RANDOM"
+# Create a random number to be used in both CS_NAMESPACE as well as in CS_CLUSTER_NAME
+RANDOM_NUMBER="$RANDOM"
+TENANT="scs-bootstrapped-tenant-$RANDOM_NUMBER"
 debug "Define namespace name for tenant as $TENANT"
 export CS_NAMESPACE=$TENANT
 
@@ -186,11 +188,14 @@ do
 done
 
 # Now continue with submitting a Cluster based on this ClusterClass
-export CS_CLUSTER_NAME=cs-cluster
+export CS_CLUSTER_NAME="cs-cluster-$RANDOM_NUMBER"
 export CS_POD_CIDR=192.168.0.0/16
 export CS_SERVICE_CIDR=10.96.0.0/12
 export CS_EXTERNAL_ID="$OS_PUBLIC_INTERFACE_UUID"
 export CS_K8S_PATCH_VERSION=3
+
+# Regarding flavor: SCS-2V-4-20s is a mandatory flavor and should work in all compliant OpenStack environments.
+# In the cluster stacks repo, SCS-2V-4-50 is used. This has caused issues because it's optional
 
 debug "Creating cluster.generated.yaml"
 cat > cluster.generated.yaml <<EOF
@@ -213,9 +218,9 @@ spec:
   topology:
     variables:
       - name: controller_flavor
-        value: "SCS-2V-4-50"
+        value: "SCS-2V-4-20s"
       - name: worker_flavor
-        value: "SCS-2V-4-50"
+        value: "SCS-2V-4-20s"
       - name: external_id
         value: ${CS_EXTERNAL_ID}
     class: ${CS_CLASS_NAME}
