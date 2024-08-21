@@ -1,10 +1,24 @@
-#!/bin/sh
+#!bash
+
+# SPDX-License-Identifier: Apache-2.0
+
+# Copyright 2024 Dominik Pataky
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Full setup script based on the quickstart in https://github.com/SovereignCloudStack/cluster-stacks.
 # URL: https://github.com/SovereignCloudStack/cluster-stacks/blob/6b250211290c181aa3a3c14831b4bcc665b8a811/providers/openstack/README.md
-
 # Built for use in Arnsberg Hackathon on 2024-04-16 and extended for multiple environments.
-# Author: Dominik Pataky <pataky@osb-alliance.com> 2024
 
 set -e
 
