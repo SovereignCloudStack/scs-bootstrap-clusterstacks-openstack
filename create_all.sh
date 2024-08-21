@@ -29,6 +29,15 @@ debug () {
     echo -e "🔵 ${d} | $@"
 }
 
+usage () {
+    echo -e "\nUsage: $0 [path-to-clouds.yaml]"
+    exit 0
+}
+
+if [[ "$1" == "-h" ]]; then
+    usage
+fi
+
 CLOUDSYAML=$1
 
 if [[ -z "$CLOUDSYAML" ]]; then
@@ -38,6 +47,7 @@ fi
 
 if [[ ! -f "$CLOUDSYAML" ]]; then
     debug "Tried to use file '$CLOUDSYAML' as clouds.yaml, but file does not exist or is not a file"
+    usage
     exit 1
 fi
 
