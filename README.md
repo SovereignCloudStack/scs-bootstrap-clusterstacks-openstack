@@ -18,12 +18,17 @@ As stated in the source README, you need the following CLI tools:
 * `clusterctl`
 * `jq`
 
+Additionally, for this script also needed are:
+
+* `python3`
+* the python3-yaml library
+
 Go with `envsubst` is not needed here because it is replaced with Python.
 
 
 ### Config files
 
-* `gh-pat`: plain text file that contains your Github PAT
+* `gh-pat`: plain text file that contains your Github PAT as text string
 * `clouds.yaml`: credentials from your OpenStack project
 
 
@@ -34,6 +39,17 @@ Go with `envsubst` is not needed here because it is replaced with Python.
 
 
 ## Additional notes
+
+### Quickly generate workload cluster access for someone else
+
+The folder `generate-cert-access` contains a script which let's you generate a new kubeconfig with less privileges than the cluster-admin.
+This is very helpful for running tests, experiments or compliance checks.
+
+After you run the bootstrapping script, you have both a Cluster Stacks management cluster as well as the first workload cluster.
+Use the workload cluster's kubeconfig via `export KUBECONFIG=xyz`, which makes you the cluster-admin by default and run the script.
+The resulting kubeconfig allows for someone else to use `kubectl` with the workload cluster as endpoint, but scoped in a namespace.
+
+
 
 ### OpenStack CLI client
 

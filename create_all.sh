@@ -8,6 +8,8 @@
 
 set -e
 
+trap "echo -e '\n\nInterrupt was called - exiting program.'; exit" SIGINT
+
 debug () {
     d=$(date +%H:%M:%S)
     echo -e "🔵 ${d} | $@"
